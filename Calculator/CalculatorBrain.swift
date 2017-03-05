@@ -2,23 +2,24 @@
 //  CalculatorBrain.swift
 //  Calculator
 //
-//  Created by Cristian Lucania on 21/02/17.
-//  Copyright © 2017 Cristian Lucania. All rights reserved.
+//  Created by Cristian on 21/02/17.
+//  Copyright © 2017 Cristian. All rights reserved.
 //
 
 import Foundation
 
 struct CalculatorBrain {
-    
-    private var accumulator: Double?
-    
+
+    private var accumulator: (value: Double?, description: String?)
+    private var pendingBinaryOperation: PendingBinaryOperation?
+
     private enum Operation {
         case constant(Double)
         case unaryOperation((Double) -> Double)
         case binaryOpertion((Double, Double) -> Double)
         case equals
     }
-    
+  
     private var operations: Dictionary<String, Operation> = [
         "π" : Operation.constant(M_PI),
         "e" : Operation.constant(M_E),
@@ -35,35 +36,6 @@ struct CalculatorBrain {
         "=" : Operation.equals
     ]
 
-    mutating func performOperation(_ symbol: String) {
-        if let operation = operations[symbol] {
-            switch operation {
-            case .constant(let value):
-                accumulator = value
-            case .unaryOperation(let function):
-                if accumulator != nil {
-                    accumulator = function(accumulator!)
-                }
-            case .binaryOpertion(let function):
-                if accumulator != nil {
-                    pendingBinaryOperation = PendingBinaryOperation(function: function, firstOperand: accumulator!)
-                    accumulator = nil
-                }
-            case .equals:
-                performPendingBinaryOperation()
-            }
-        }
-    }
-    
-    mutating private func performPendingBinaryOperation() {
-        if pendingBinaryOperation != nil && accumulator != nil {
-            accumulator = pendingBinaryOperation!.perform(with: accumulator!)
-            pendingBinaryOperation = nil
-        }
-    }
-    
-    private var pendingBinaryOperation: PendingBinaryOperation?
-    
     private struct PendingBinaryOperation {
         let function: (Double, Double) -> Double
         let firstOperand: Double
@@ -72,14 +44,54 @@ struct CalculatorBrain {
             return function(firstOperand, secondOperand)
         }
     }
+
+    mutating private func performPendingBinaryOperation() {
+        if pendingBinaryOperation != nil && accumulator.value != nil {
+            accumulator.value = pendingBinaryOperation!.perform(with: accumulator.value!)
+            pendingBinaryOperation = nil
+        }
+    }
     
-    mutating func setOperand(_ operand: Double) {
-        accumulator = operand
+    var resultIsPending: Bool {
+        return pendingBinaryOperation != nil
     }
     
     var result: Double? {
-        get {
-            return accumulator
+        return accumulator.value
+    }
+    
+    var description: String? {
+        return accumulator.description
+    }
+    
+    mutating func clear() {
+        accumulator.value = nil
+        accumulator.description = nil
+        pendingBinaryOperation = nil
+    }
+
+    mutating func setOperand(_ operand: Double) {
+        accumulator.value = operand
+    }
+
+    mutating func performOperation(_ symbol: String) {
+        if let operation = operations[symbol] {
+            switch operation {
+            case .constant(let value):
+                accumulator.value = value
+            case .unaryOperation(let function):
+                if accumulator.value != nil {
+                    accumulator.value = function(accumulator.value!)
+                }
+            case .binaryOpertion(let function):
+                if accumulator.value != nil {
+                    pendingBinaryOperation = PendingBinaryOperation(function: function, firstOperand: accumulator.value!)
+                    accumulator.value = nil
+                }
+            case .equals:
+                performPendingBinaryOperation()
+            }
+            
         }
     }
 }

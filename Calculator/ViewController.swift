@@ -2,16 +2,23 @@
 //  ViewController.swift
 //  Calculator
 //
-//  Created by Cristian Lucania on 12/02/17.
-//  Copyright © 2017 Cristian Lucania. All rights reserved.
+//  Created by Cristian on 12/02/17.
+//  Copyright © 2017 Cristian. All rights reserved.
 //
 
 import UIKit
 
 class ViewController: UIViewController {
     
-    @IBOutlet weak var display: UILabel!
+    override var preferredStatusBarStyle: UIStatusBarStyle {
+        return UIStatusBarStyle.lightContent
+    }
     
+    @IBOutlet weak var display: UILabel!
+    @IBOutlet weak var history: UILabel!
+    
+    private var brain = CalculatorBrain()
+
     var userIsInTheMiddleOfTyping = false
 
     @IBAction func touchDigit(_ sender: UIButton) {
@@ -22,12 +29,7 @@ class ViewController: UIViewController {
                 display.text = textCurrentlyInDisplay + digit
             }
         } else {
-            if digit == "." {
-                display.text = "0" + digit
-                
-            } else {
-                display.text = digit
-            }
+            display.text = (digit == ".") ? "0." : digit
             userIsInTheMiddleOfTyping = true
         }
     }
@@ -41,8 +43,6 @@ class ViewController: UIViewController {
         }
     }
     
-    private var brain = CalculatorBrain()
-
     @IBAction func performOperation(_ sender: UIButton) {
         if userIsInTheMiddleOfTyping {
             brain.setOperand(displayValue)
@@ -56,5 +56,8 @@ class ViewController: UIViewController {
         }
     }
 
+    @IBAction func clear(_ sender: UIButton) {
+        brain.clear()
+    }
 }
 
