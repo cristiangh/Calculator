@@ -39,7 +39,11 @@ class ViewController: UIViewController {
             return Double(display.text!)!
         }
         set {
-            display.text = String(newValue)
+            if (newValue.rounded() == newValue) {
+                display.text = String(Int(newValue))
+            } else {
+                display.text = String(newValue)
+            }
         }
     }
     
@@ -58,6 +62,8 @@ class ViewController: UIViewController {
 
     @IBAction func clear(_ sender: UIButton) {
         brain.clear()
+        displayValue = 0
+        userIsInTheMiddleOfTyping = false
     }
 }
 
