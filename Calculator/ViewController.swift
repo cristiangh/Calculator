@@ -58,11 +58,13 @@ class ViewController: UIViewController {
         if let result = brain.result {
             displayValue = result
         }
+        history.text = "\(brain.description)\(brain.resultIsPending ? "..." : "=")"
     }
 
     @IBAction func clear(_ sender: UIButton) {
         brain.clear()
         displayValue = 0
+        history.text = " "
         userIsInTheMiddleOfTyping = false
     }
 }
