@@ -12,6 +12,7 @@ struct CalculatorBrain {
 
     private var accumulator: (value: Double?, description: String)
     private var pendingBinaryOperation: PendingBinaryOperation?
+    private var lastOperationIsBinary: Bool = false
 
     init() {
         accumulator = (nil, "")
@@ -32,7 +33,7 @@ struct CalculatorBrain {
         "√"   : Operation.unaryOperation  (sqrt),
         "x²"  : Operation.unaryOperation  { $0 * $0 },
         "±"   : Operation.unaryOperation  { -$0 },
-        "%"   : Operation.unaryOperation  { $0 / 100 },
+        "1/x"   : Operation.unaryOperation  { 1 / $0 },
         "×"   : Operation.binaryOperation { $0 * $1 },
         "÷"   : Operation.binaryOperation { $0 / $1 },
         "+"   : Operation.binaryOperation { $0 + $1 },
@@ -56,11 +57,11 @@ struct CalculatorBrain {
         }
     }
     
-    private func string(of value: Double?) -> String {
-        if let v = value {
-            return (v.rounded() == v) ? String(Int(v)) : String(v)
-        }
-        return ""
+    private func string(from value: Double) -> String {
+        let nf = NumberFormatter()
+        nf.minimumFractionDigits = 0
+        nf.maximumFractionDigits = 6
+        return nf.string(from: NSNumber(value: value))!
     }
     
     var resultIsPending: Bool {
@@ -82,6 +83,9 @@ struct CalculatorBrain {
 
     mutating func setOperand(_ operand: Double) {
         accumulator.value = operand
+        if !resultIsPending {
+            accumulator.description = "\(string(from: operand))"
+        }
     }
 
     mutating func performOperation(_ symbol: String) {
@@ -89,19 +93,48 @@ struct CalculatorBrain {
             switch operation {
             case .constant(let value):
                 accumulator.value = value
-                accumulator.description += "\(symbol)"
+                if resultIsPending {
+                    accumulator.description += "\(symbol)"
+                } else {
+                    accumulator.description = "\(symbol)"
+                }
+                lastOperationIsBinary = false
             case .unaryOperation(let function):
                 if accumulator.value != nil {
+                    if resultIsPending {
+                        if symbol == "1/x" {
+                            accumulator.description += "1/(\(string(from: accumulator.value!)))"
+                        } else if symbol == "x²" {
+                            accumulator.description += "(\(string(from: accumulator.value!)))²"
+                        } else {
+                            accumulator.description += "\(symbol)(\(string(from: accumulator.value!)))"
+                        }
+                    } else {
+                        if symbol == "1/x" {
+                            accumulator.description = "1/(\(accumulator.description))"
+                        } else if symbol == "x²" {
+                            accumulator.description = "(\(accumulator.description))²"
+                        } else {
+                            accumulator.description = "\(symbol)(\(accumulator.description))"
+                        }
+                    }
                     accumulator.value = function(accumulator.value!)
                 }
+                lastOperationIsBinary = false
             case .binaryOperation(let function):
                 if accumulator.value != nil {
                     if resultIsPending {
+                        accumulator.description += "\(string(from:accumulator.value!))"
                         performPendingBinaryOperation()
                     }
                     pendingBinaryOperation = PendingBinaryOperation(function: function, firstOperand: accumulator.value!)
+                    accumulator.description += "\(symbol)"
                 }
+                lastOperationIsBinary = true
             case .equals:
+                if resultIsPending && lastOperationIsBinary {
+                    accumulator.description += "\(string(from:accumulator.value!))"
+                }
                 performPendingBinaryOperation()
             }
             

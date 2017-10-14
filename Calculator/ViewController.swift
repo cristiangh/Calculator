@@ -39,11 +39,10 @@ class ViewController: UIViewController {
             return Double(display.text!)!
         }
         set {
-            if (newValue.rounded() == newValue) {
-                display.text = String(Int(newValue))
-            } else {
-                display.text = String(newValue)
-            }
+            let nf = NumberFormatter()
+            nf.minimumFractionDigits = 0
+            nf.maximumFractionDigits = 6
+            display.text = nf.string(from: NSNumber(value: newValue))
         }
     }
     
