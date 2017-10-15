@@ -10,49 +10,46 @@ import Foundation
 
 struct CalculatorBrain {
 
-    private var accumulator: (value: Double?, description: String)
-    private var pendingBinaryOperation: PendingBinaryOperation?
-    private var lastOperationIsBinary: Bool = false
-
-    init() {
-        accumulator = (nil, "")
-    }
+    private var accumulator: (value: Double, description: String)?
     
+    private var pendingBinaryOperation: PendingBinaryOperation?
+   
     private enum Operation {
         case constant(Double)
-        case unaryOperation((Double) -> Double)
-        case binaryOperation((Double, Double) -> Double)
+        case unaryOperation((Double) -> Double, (String) -> String)
+        case binaryOperation((Double, Double) -> Double, (String, String) -> String)
         case equals
     }
   
     private var operations: Dictionary<String, Operation> = [
         "π"   : Operation.constant        (Double.pi),
         "e"   : Operation.constant        (M_E),
-        "cos" : Operation.unaryOperation  (cos),
-        "sin" : Operation.unaryOperation  (sin),
-        "√"   : Operation.unaryOperation  (sqrt),
-        "x²"  : Operation.unaryOperation  { $0 * $0 },
-        "±"   : Operation.unaryOperation  { -$0 },
-        "1/x"   : Operation.unaryOperation  { 1 / $0 },
-        "×"   : Operation.binaryOperation { $0 * $1 },
-        "÷"   : Operation.binaryOperation { $0 / $1 },
-        "+"   : Operation.binaryOperation { $0 + $1 },
-        "-"   : Operation.binaryOperation { $0 - $1 },
+        "cos" : Operation.unaryOperation  (cos, {"cos(\($0))"}),
+        "sin" : Operation.unaryOperation  (sin, {"sin(\($0))"}),
+        "√"   : Operation.unaryOperation  (sqrt, {"√(\($0))"}),
+        "x²"  : Operation.unaryOperation  ({ $0 * $0 }, {"(\($0))²"}),
+        "x⁻¹" : Operation.unaryOperation  ({ 1 / $0 }, {"\($0)⁻¹"}),
+        "±"   : Operation.unaryOperation  ({ -$0 }, {"-\($0)"}),
+        "×"   : Operation.binaryOperation ({ $0 * $1 }, {"\($0)x\($1)"}),
+        "÷"   : Operation.binaryOperation ({ $0 / $1 }, {"\($0)÷\($1)"}),
+        "+"   : Operation.binaryOperation ({ $0 + $1 }, {"\($0)+\($1)"}),
+        "-"   : Operation.binaryOperation ({ $0 - $1 }, {"\($0)-\($1)"}),
         "="   : Operation.equals
     ]
 
     private struct PendingBinaryOperation {
         let function: (Double, Double) -> Double
-        let firstOperand: Double
+        let description: (String, String) -> String
+        let firstOperand: (Double, String)
         
-        func perform(with secondOperand: Double) -> Double {
-            return function(firstOperand, secondOperand)
+        func perform(with secondOperand: (Double, String)) -> (Double, String) {
+            return (function(firstOperand.0, secondOperand.0), description(firstOperand.1, secondOperand.1))
         }
     }
 
     mutating private func performPendingBinaryOperation() {
-        if pendingBinaryOperation != nil && accumulator.value != nil {
-            accumulator.value = pendingBinaryOperation!.perform(with: accumulator.value!)
+        if pendingBinaryOperation != nil && accumulator != nil {
+            accumulator = pendingBinaryOperation!.perform(with: accumulator!)
             pendingBinaryOperation = nil
         }
     }
@@ -68,76 +65,45 @@ struct CalculatorBrain {
         return pendingBinaryOperation != nil
     }
     
-    var description: String {
-        return accumulator.description
+    var description: String? {
+        if resultIsPending {
+            return pendingBinaryOperation!.description(pendingBinaryOperation!.firstOperand.1, accumulator?.description ?? "")
+        } else {
+            return accumulator?.description
+        }
     }
     
     var result: Double? {
-        return accumulator.value
+        return accumulator?.value
     }
     
     mutating func clear() {
-        accumulator = (nil, "")
+        accumulator = nil
         pendingBinaryOperation = nil
     }
 
     mutating func setOperand(_ operand: Double) {
-        accumulator.value = operand
-        if !resultIsPending {
-            accumulator.description = "\(string(from: operand))"
-        }
+        accumulator = (operand, string(from: operand))
     }
 
     mutating func performOperation(_ symbol: String) {
         if let operation = operations[symbol] {
             switch operation {
             case .constant(let value):
-                accumulator.value = value
-                if resultIsPending {
-                    accumulator.description += "\(symbol)"
-                } else {
-                    accumulator.description = "\(symbol)"
+                accumulator = (value, symbol)
+            case .unaryOperation(let function, let description):
+                if accumulator != nil {
+                    accumulator = (function(accumulator!.value), description(accumulator!.description))
                 }
-                lastOperationIsBinary = false
-            case .unaryOperation(let function):
-                if accumulator.value != nil {
-                    if resultIsPending {
-                        if symbol == "1/x" {
-                            accumulator.description += "1/(\(string(from: accumulator.value!)))"
-                        } else if symbol == "x²" {
-                            accumulator.description += "(\(string(from: accumulator.value!)))²"
-                        } else {
-                            accumulator.description += "\(symbol)(\(string(from: accumulator.value!)))"
-                        }
-                    } else {
-                        if symbol == "1/x" {
-                            accumulator.description = "1/(\(accumulator.description))"
-                        } else if symbol == "x²" {
-                            accumulator.description = "(\(accumulator.description))²"
-                        } else {
-                            accumulator.description = "\(symbol)(\(accumulator.description))"
-                        }
-                    }
-                    accumulator.value = function(accumulator.value!)
+            case .binaryOperation(let function, let description):
+                performPendingBinaryOperation()
+                if accumulator != nil {
+                    pendingBinaryOperation = PendingBinaryOperation(function: function, description: description, firstOperand: accumulator!)
+                    accumulator = nil
                 }
-                lastOperationIsBinary = false
-            case .binaryOperation(let function):
-                if accumulator.value != nil {
-                    if resultIsPending {
-                        accumulator.description += "\(string(from:accumulator.value!))"
-                        performPendingBinaryOperation()
-                    }
-                    pendingBinaryOperation = PendingBinaryOperation(function: function, firstOperand: accumulator.value!)
-                    accumulator.description += "\(symbol)"
-                }
-                lastOperationIsBinary = true
             case .equals:
-                if resultIsPending && lastOperationIsBinary {
-                    accumulator.description += "\(string(from:accumulator.value!))"
-                }
                 performPendingBinaryOperation()
             }
-            
         }
     }
 }

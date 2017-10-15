@@ -16,6 +16,7 @@ class ViewController: UIViewController {
     
     @IBOutlet weak var display: UILabel!
     @IBOutlet weak var history: UILabel!
+    @IBOutlet weak var variable: UILabel!
     
     private var brain = CalculatorBrain()
 
@@ -57,7 +58,11 @@ class ViewController: UIViewController {
         if let result = brain.result {
             displayValue = result
         }
-        history.text = "\(brain.description)\(brain.resultIsPending ? "..." : "=")"
+        if let description = brain.description {
+            history.text = "\(description)\(brain.resultIsPending ? "..." : "=")"
+        } else {
+            history.text = " "
+        }
     }
 
     @IBAction func clear(_ sender: UIButton) {
