@@ -10,17 +10,35 @@ import UIKit
 
 class ViewController: UIViewController {
     
-    override var preferredStatusBarStyle: UIStatusBarStyle {
-        return UIStatusBarStyle.lightContent
+    private var brain = CalculatorBrain()
+    
+    private var variables = [String: Double]() {
+        didSet {
+            variable.text = variables.flatMap{$0 + " = " + $1.toString()!}.joined(separator: ", ")
+        }
+    }
+    
+    private var userIsInTheMiddleOfTyping = false
+    
+    private var displayValue: Double {
+        get {
+            return Double(display.text!)!
+        }
+        set {
+            display.text = newValue.toString()
+        }
+    }
+    
+    private func updateUI(with evaluation: (result: Double?, isPending: Bool, description: String)) {
+        if let result = evaluation.result {
+            displayValue = result
+        }
+        history.text = "\(evaluation.description)\(evaluation.isPending ? "..." : "=")"
     }
     
     @IBOutlet weak var display: UILabel!
     @IBOutlet weak var history: UILabel!
     @IBOutlet weak var variable: UILabel!
-    
-    private var brain = CalculatorBrain()
-
-    var userIsInTheMiddleOfTyping = false
 
     @IBAction func touchDigit(_ sender: UIButton) {
         let digit = sender.currentTitle!
@@ -35,18 +53,6 @@ class ViewController: UIViewController {
         }
     }
     
-    var displayValue: Double {
-        get {
-            return Double(display.text!)!
-        }
-        set {
-            let nf = NumberFormatter()
-            nf.minimumFractionDigits = 0
-            nf.maximumFractionDigits = 6
-            display.text = nf.string(from: NSNumber(value: newValue))
-        }
-    }
-    
     @IBAction func performOperation(_ sender: UIButton) {
         if userIsInTheMiddleOfTyping {
             brain.setOperand(displayValue)
@@ -55,21 +61,57 @@ class ViewController: UIViewController {
         if let mathematicalSymbol = sender.currentTitle {
             brain.performOperation(mathematicalSymbol)
         }
-        if let result = brain.result {
-            displayValue = result
-        }
-        if let description = brain.description {
-            history.text = "\(description)\(brain.resultIsPending ? "..." : "=")"
+        let evaluation = brain.evaluate(using: variables)
+        updateUI(with: evaluation)
+    }
+    
+    @IBAction func performEvaluate() {
+        variables["M"] = displayValue
+        userIsInTheMiddleOfTyping = false
+        let evaluation = brain.evaluate(using: variables)
+        updateUI(with: evaluation)
+    }
+    
+    @IBAction func setM() {
+        brain.setOperand(variable: "M")
+        let evaluation = brain.evaluate(using: variables)
+        updateUI(with: evaluation)
+    }
+    
+    @IBAction func clear() {
+        userIsInTheMiddleOfTyping = false
+        variables = [:]
+        brain.clear()
+        variable.text = " "
+        history.text = " "
+        display.text = "0"
+    }
+    
+    @IBAction func undo() {
+        if userIsInTheMiddleOfTyping, var text = display.text {
+            text.removeLast()
+            if text.isEmpty {
+                text = "0"
+                userIsInTheMiddleOfTyping = false
+            }
+            display.text = text
         } else {
-            history.text = " "
+            brain.undo()
+            let evaluation = brain.evaluate(using: variables)
+            updateUI(with: evaluation)
         }
     }
-
-    @IBAction func clear(_ sender: UIButton) {
-        brain.clear()
-        displayValue = 0
-        history.text = " "
-        userIsInTheMiddleOfTyping = false
+    
+    override var preferredStatusBarStyle: UIStatusBarStyle {
+        return UIStatusBarStyle.lightContent
     }
 }
 
+extension Double {
+    func toString() -> String? {
+        let nf = NumberFormatter()
+        nf.minimumFractionDigits = 0
+        nf.maximumFractionDigits = 6
+        return nf.string(from: NSNumber(value: self))
+    }
+}
