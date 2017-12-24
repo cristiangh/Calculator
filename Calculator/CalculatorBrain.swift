@@ -8,7 +8,7 @@
 
 import Foundation
 
-struct CalculatorBrain {
+struct CalculatorBrain : CustomStringConvertible {
   
     // MARK: Private declaration
 
@@ -49,7 +49,7 @@ struct CalculatorBrain {
         return evaluate().isPending
     }
     
-    var description: String? {
+    var description: String {
         return evaluate().description
     }
     
