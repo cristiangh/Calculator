@@ -2,48 +2,15 @@
 //  CalculatorBrain.swift
 //  Calculator
 //
-//  Created by Cristian on 21/02/17.
-//  Copyright © 2017 Cristian. All rights reserved.
+//  Created by Cristian Lucania on 21/02/17.
+//  Copyright © 2017 Cristian Lucania. All rights reserved.
 //
 
 import Foundation
 
-struct CalculatorBrain : CustomStringConvertible {
-  
-    // MARK: Private declaration
-
-    private var expression = [Element]()
-    
-    private enum Element {
-        case variable(String)
-        case operand(Double)
-        case operation(String)
-    }
-    
-    private enum Operation {
-        case constant(Double)
-        case unaryOperation((Double) -> Double, (String) -> String)
-        case binaryOperation((Double, Double) -> Double, (String, String) -> String)
-        case equals
-    }
-  
-    private var operations: Dictionary<String, Operation> = [
-        "π"   : Operation.constant        (Double.pi),
-        "e"   : Operation.constant        (M_E),
-        "cos" : Operation.unaryOperation  (cos, {"cos(\($0))"}),
-        "sin" : Operation.unaryOperation  (sin, {"sin(\($0))"}),
-        "√"   : Operation.unaryOperation  (sqrt, {"√(\($0))"}),
-        "x²"  : Operation.unaryOperation  ({ $0 * $0 }, {"(\($0))²"}),
-        "x⁻¹" : Operation.unaryOperation  ({ 1 / $0 }, {"\($0)⁻¹"}),
-        "±"   : Operation.unaryOperation  ({ -$0 }, {"-\($0)"}),
-        "×"   : Operation.binaryOperation ({ $0 * $1 }, {"\($0)x\($1)"}),
-        "÷"   : Operation.binaryOperation ({ $0 / $1 }, {"\($0)÷\($1)"}),
-        "+"   : Operation.binaryOperation ({ $0 + $1 }, {"\($0)+\($1)"}),
-        "-"   : Operation.binaryOperation ({ $0 - $1 }, {"\($0)-\($1)"}),
-        "="   : Operation.equals
-    ]
-
-    // MARK: Public declarations
+struct CalculatorBrain : CustomStringConvertible
+{
+    // MARK: - Public API
 
     var resultIsPending: Bool {
         return evaluate().isPending
@@ -74,7 +41,9 @@ struct CalculatorBrain : CustomStringConvertible {
     }
     
     mutating func undo() {
-        expression.removeLast()
+        if expression.count > 0 {
+            expression.removeLast()
+        }
     }
     
     func evaluate(using variables: Dictionary<String, Double>? = nil) -> (result: Double?, isPending: Bool, description: String) {
@@ -144,4 +113,37 @@ struct CalculatorBrain : CustomStringConvertible {
         
         return (result, resultIsPending, description ?? " ")
     }
+    
+    // MARK: - Private Implementation
+    
+    private var expression = [Element]()
+    
+    private enum Element {
+        case variable(String)
+        case operand(Double)
+        case operation(String)
+    }
+    
+    private enum Operation {
+        case constant(Double)
+        case unaryOperation((Double) -> Double, (String) -> String)
+        case binaryOperation((Double, Double) -> Double, (String, String) -> String)
+        case equals
+    }
+    
+    private var operations: Dictionary<String, Operation> = [
+        "π"   : Operation.constant        (Double.pi),
+        "e"   : Operation.constant        (M_E),
+        "cos" : Operation.unaryOperation  (cos, {"cos(\($0))"}),
+        "sin" : Operation.unaryOperation  (sin, {"sin(\($0))"}),
+        "√"   : Operation.unaryOperation  (sqrt, {"√(\($0))"}),
+        "x²"  : Operation.unaryOperation  ({ $0 * $0 }, {"(\($0))²"}),
+        "x⁻¹" : Operation.unaryOperation  ({ 1 / $0 }, {"\($0)⁻¹"}),
+        "±"   : Operation.unaryOperation  ({ -$0 }, {"-\($0)"}),
+        "×"   : Operation.binaryOperation ({ $0 * $1 }, {"\($0)x\($1)"}),
+        "÷"   : Operation.binaryOperation ({ $0 / $1 }, {"\($0)÷\($1)"}),
+        "+"   : Operation.binaryOperation ({ $0 + $1 }, {"\($0)+\($1)"}),
+        "-"   : Operation.binaryOperation ({ $0 - $1 }, {"\($0)-\($1)"}),
+        "="   : Operation.equals
+    ]
 }
